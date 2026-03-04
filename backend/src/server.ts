@@ -1,7 +1,10 @@
 import 'dotenv/config';
-import express from 'express';
 import cors from 'cors';
-import { PrismaClient } from '@prisma/client';
+import express, { type NextFunction, type Request, type Response } from 'express';
+import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import bcrypt from 'bcryptjs';
+import { z, ZodError } from 'zod';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -9,106 +12,232 @@ const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || 3001);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const asyncHandler =
+  (handler: (req: Request, res: Response, next: NextFunction) => Promise<void>) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    handler(req, res, next).catch(next);
+  };
+
+const idSchema = z.coerce.number().int().positive();
+const dateRangeSchema = z.object({
+  start: z.string().min(10),
+  end: z.string().min(10),
+});
+
+const loginSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
+
+const clientSchema = z.object({
+  name: z.string().min(2),
+  document: z.string().min(3),
+  phone: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  street: z.string().optional().nullable(),
+  number: z.string().optional().nullable(),
+  neighborhood: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  zip: z.string().optional().nullable(),
+});
+
+const productSchema = z.object({
+  code: z.string().min(1),
+  name: z.string().min(2),
+  description: z.string().optional().nullable(),
+  category: z.string().optional().nullable(),
+  price: z.coerce.number().nonnegative(),
+  stock: z.coerce.number().int().nonnegative(),
+  unit: z.string().optional().nullable(),
+});
+
+const saleItemSchema = z.object({
+  product_id: z.number().int().positive(),
+  quantity: z.number().int().positive(),
+  unit_price: z.number().nonnegative(),
+  subtotal: z.number().nonnegative(),
+});
+
+const saleSchema = z.object({
+  client_id: z.number().int().positive(),
+  user_id: z.number().int().positive(),
+  items: z.array(saleItemSchema).min(1),
+  total: z.number().nonnegative(),
+  discount: z.number().nonnegative(),
+  payment_method: z.string().min(2),
+});
+
 app.use(cors({ origin: FRONTEND_ORIGIN }));
 app.use(express.json());
 
-// Auth
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+const toClientResponse = (client: {
+  createdAt: Date;
+  id: number;
+  name: string;
+  document: string;
+  phone: string | null;
+  email: string | null;
+  street: string | null;
+  number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+}) => ({ ...client, created_at: client.createdAt });
 
-  const user = await prisma.user.findFirst({
-    where: { username, password },
-    select: { id: true, username: true, role: true },
-  });
+const toProductResponse = (product: {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  price: number;
+  stock: number;
+  unit: string | null;
+  createdAt: Date;
+}) => ({ ...product, created_at: product.createdAt });
 
-  if (!user) {
-    return res.status(401).json({ error: 'Credenciais inválidas' });
-  }
+app.post(
+  '/api/login',
+  asyncHandler(async (req, res) => {
+    const { username, password } = loginSchema.parse(req.body);
 
-  return res.json(user);
-});
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) {
+      throw new HttpError('Credenciais inválidas', 401);
+    }
 
-// Clients
-app.get('/api/clients', async (_req, res) => {
-  const clients = await prisma.client.findMany({ orderBy: { name: 'asc' } });
-  return res.json(clients.map((client: any) => ({ ...client, created_at: client.createdAt })));
-});
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      throw new HttpError('Credenciais inválidas', 401);
+    }
 
-app.post('/api/clients', async (req, res) => {
-  try {
-    const created = await prisma.client.create({ data: req.body });
-    return res.json({ id: created.id });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
-  }
-});
+    res.json({ id: user.id, username: user.username, role: user.role });
+  }),
+);
 
-app.put('/api/clients/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  await prisma.client.update({ where: { id }, data: req.body });
-  return res.json({ success: true });
-});
+app.get(
+  '/api/clients',
+  asyncHandler(async (_req, res) => {
+    const clients = await prisma.client.findMany({ orderBy: { name: 'asc' } });
+    res.json(clients.map(toClientResponse));
+  }),
+);
 
-app.delete('/api/clients/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  await prisma.client.delete({ where: { id } });
-  return res.json({ success: true });
-});
+app.post(
+  '/api/clients',
+  asyncHandler(async (req, res) => {
+    const data = clientSchema.parse(req.body);
+    const created = await prisma.client.create({ data });
+    res.status(201).json({ id: created.id });
+  }),
+);
 
-// Products
-app.get('/api/products', async (_req, res) => {
-  const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
-  return res.json(products.map((product: any) => ({ ...product, created_at: product.createdAt })));
-});
+app.put(
+  '/api/clients/:id',
+  asyncHandler(async (req, res) => {
+    const id = idSchema.parse(req.params.id);
+    const data = clientSchema.parse(req.body);
+    await prisma.client.update({ where: { id }, data });
+    res.json({ success: true });
+  }),
+);
 
-app.post('/api/products', async (req, res) => {
-  try {
-    const created = await prisma.product.create({ data: req.body });
-    return res.json({ id: created.id });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
-  }
-});
+app.delete(
+  '/api/clients/:id',
+  asyncHandler(async (req, res) => {
+    const id = idSchema.parse(req.params.id);
+    await prisma.client.delete({ where: { id } });
+    res.json({ success: true });
+  }),
+);
 
-app.put('/api/products/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  await prisma.product.update({ where: { id }, data: req.body });
-  return res.json({ success: true });
-});
+app.get(
+  '/api/products',
+  asyncHandler(async (_req, res) => {
+    const products = await prisma.product.findMany({ orderBy: { name: 'asc' } });
+    res.json(products.map(toProductResponse));
+  }),
+);
 
-app.delete('/api/products/:id', async (req, res) => {
-  const id = Number(req.params.id);
-  await prisma.product.delete({ where: { id } });
-  return res.json({ success: true });
-});
+app.post(
+  '/api/products',
+  asyncHandler(async (req, res) => {
+    const data = productSchema.parse(req.body);
+    const created = await prisma.product.create({ data });
+    res.status(201).json({ id: created.id });
+  }),
+);
 
-// Sales
-app.get('/api/sales', async (_req, res) => {
-  const sales = await prisma.sale.findMany({
-    include: { client: true },
-    orderBy: { createdAt: 'desc' },
-  });
+app.put(
+  '/api/products/:id',
+  asyncHandler(async (req, res) => {
+    const id = idSchema.parse(req.params.id);
+    const data = productSchema.parse(req.body);
+    await prisma.product.update({ where: { id }, data });
+    res.json({ success: true });
+  }),
+);
 
-  return res.json(
-    sales.map((sale: any) => ({
-      id: sale.id,
-      client_id: sale.clientId,
-      client_name: sale.client.name,
-      user_id: sale.userId,
-      total: sale.total,
-      discount: sale.discount,
-      payment_method: sale.paymentMethod,
-      status: sale.status,
-      created_at: sale.createdAt,
-    })),
-  );
-});
+app.delete(
+  '/api/products/:id',
+  asyncHandler(async (req, res) => {
+    const id = idSchema.parse(req.params.id);
+    await prisma.product.delete({ where: { id } });
+    res.json({ success: true });
+  }),
+);
 
-app.post('/api/sales', async (req, res) => {
-  const { client_id, user_id, items, total, discount, payment_method } = req.body;
+app.get(
+  '/api/sales',
+  asyncHandler(async (_req, res) => {
+    const sales = await prisma.sale.findMany({
+      include: { client: true },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  try {
-    const saleId = await prisma.$transaction(async (tx: any) => {
+    res.json(
+      sales.map((sale: {
+        id: number;
+        clientId: number;
+        userId: number;
+        total: number;
+        discount: number;
+        paymentMethod: string | null;
+        status: string;
+        createdAt: Date;
+        client: { name: string };
+      }) => ({
+        id: sale.id,
+        client_id: sale.clientId,
+        client_name: sale.client.name,
+        user_id: sale.userId,
+        total: sale.total,
+        discount: sale.discount,
+        payment_method: sale.paymentMethod,
+        status: sale.status,
+        created_at: sale.createdAt,
+      })),
+    );
+  }),
+);
+
+app.post(
+  '/api/sales',
+  asyncHandler(async (req, res) => {
+    const { client_id, user_id, items, total, discount, payment_method } = saleSchema.parse(req.body);
+
+    const saleId = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const sale = await tx.sale.create({
         data: {
           clientId: client_id,
@@ -126,7 +255,7 @@ app.post('/api/sales', async (req, res) => {
         });
 
         if (!product || product.stock < item.quantity) {
-          throw new Error(`Estoque insuficiente para o produto ID ${item.product_id}`);
+          throw new HttpError(`Estoque insuficiente para o produto ID ${item.product_id}`, 400);
         }
 
         await tx.saleItem.create({
@@ -148,89 +277,123 @@ app.post('/api/sales', async (req, res) => {
       return sale.id;
     });
 
-    return res.json({ id: saleId });
-  } catch (error: any) {
-    return res.status(400).json({ error: error.message });
+    res.status(201).json({ id: saleId });
+  }),
+);
+
+app.post(
+  '/api/sales/:id/cancel',
+  asyncHandler(async (req, res) => {
+    const saleId = idSchema.parse(req.params.id);
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const sale = await tx.sale.findUnique({ where: { id: saleId } });
+      if (!sale || sale.status === 'cancelada') return;
+
+      const items = await tx.saleItem.findMany({ where: { saleId } });
+      for (const item of items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+
+      await tx.sale.update({ where: { id: saleId }, data: { status: 'cancelada' } });
+    });
+
+    res.json({ success: true });
+  }),
+);
+
+app.get(
+  '/api/reports/sales-period',
+  asyncHandler(async (req, res) => {
+    const { start, end } = dateRangeSchema.parse(req.query);
+
+    const startDate = new Date(`${start}T00:00:00.000Z`);
+    const endDate = new Date(`${end}T23:59:59.999Z`);
+
+    const report = await prisma.$queryRaw<Array<{ date: Date; total_revenue: number | null; sales_count: bigint }>>`
+      SELECT DATE(created_at) as date, SUM(total) as total_revenue, COUNT(*) as sales_count
+      FROM sales
+      WHERE created_at BETWEEN ${startDate} AND ${endDate}
+        AND status = 'concluída'
+      GROUP BY DATE(created_at)
+      ORDER BY DATE(created_at) ASC
+    `;
+
+    res.json(
+      report.map((row: { date: Date; total_revenue: number | null; sales_count: bigint }) => ({
+        date: row.date,
+        total_revenue: Number(row.total_revenue || 0),
+        sales_count: Number(row.sales_count),
+      })),
+    );
+  }),
+);
+
+app.get(
+  '/api/reports/top-products',
+  asyncHandler(async (_req, res) => {
+    const report = await prisma.$queryRaw<Array<{ name: string; total_sold: bigint }>>`
+      SELECT p.name, SUM(si.quantity) as total_sold
+      FROM sale_items si
+      JOIN products p ON si.product_id = p.id
+      JOIN sales s ON si.sale_id = s.id
+      WHERE s.status = 'concluída'
+      GROUP BY p.id, p.name
+      ORDER BY total_sold DESC
+      LIMIT 10
+    `;
+
+    res.json(report.map((row: { name: string; total_sold: bigint }) => ({ name: row.name, total_sold: Number(row.total_sold) })));
+  }),
+);
+
+app.get(
+  '/api/reports/low-stock',
+  asyncHandler(async (_req, res) => {
+    const report = await prisma.product.findMany({
+      where: { stock: { lt: 10 } },
+      orderBy: { stock: 'asc' },
+    });
+
+    res.json(report.map(toProductResponse));
+  }),
+);
+
+app.get(
+  '/api/health',
+  asyncHandler(async (_req, res) => {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true });
+  }),
+);
+
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (error instanceof ZodError) {
+    return res.status(422).json({
+      error: 'Payload inválido',
+      details: error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+    });
   }
-});
 
-app.post('/api/sales/:id/cancel', async (req, res) => {
-  const saleId = Number(req.params.id);
+  if (error instanceof HttpError) {
+    return res.status(error.status).json({ error: error.message });
+  }
 
-  await prisma.$transaction(async (tx: any) => {
-    const sale = await tx.sale.findUnique({ where: { id: saleId } });
-    if (!sale || sale.status === 'cancelada') {
-      return;
+  if (error instanceof PrismaClientKnownRequestError) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Registro duplicado para campo único.' });
     }
 
-    const items = await tx.saleItem.findMany({ where: { saleId } });
-
-    for (const item of items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
-      });
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Registro não encontrado.' });
     }
-
-    await tx.sale.update({ where: { id: saleId }, data: { status: 'cancelada' } });
-  });
-
-  return res.json({ success: true });
-});
-
-// Reports
-app.get('/api/reports/sales-period', async (req, res) => {
-  const { start, end } = req.query as { start?: string; end?: string };
-
-  if (!start || !end) {
-    return res.status(400).json({ error: 'Parâmetros start e end são obrigatórios' });
   }
 
-  const report = await prisma.$queryRaw<Array<{ date: Date; total_revenue: number; sales_count: bigint }>>`
-    SELECT DATE(created_at) as date, SUM(total) as total_revenue, COUNT(*) as sales_count
-    FROM sales
-    WHERE created_at BETWEEN ${new Date(start)} AND ${new Date(end)}
-      AND status = 'concluída'
-    GROUP BY DATE(created_at)
-    ORDER BY DATE(created_at) ASC
-  `;
-
-  return res.json(
-    report.map((row: any) => ({
-      date: row.date,
-      total_revenue: row.total_revenue,
-      sales_count: Number(row.sales_count),
-    })),
-  );
-});
-
-app.get('/api/reports/top-products', async (_req, res) => {
-  const report = await prisma.$queryRaw<Array<{ name: string; total_sold: bigint }>>`
-    SELECT p.name, SUM(si.quantity) as total_sold
-    FROM sale_items si
-    JOIN products p ON si.product_id = p.id
-    JOIN sales s ON si.sale_id = s.id
-    WHERE s.status = 'concluída'
-    GROUP BY p.id
-    ORDER BY total_sold DESC
-    LIMIT 10
-  `;
-
-  return res.json(report.map((row: any) => ({ ...row, total_sold: Number(row.total_sold) })));
-});
-
-app.get('/api/reports/low-stock', async (_req, res) => {
-  const report = await prisma.product.findMany({
-    where: { stock: { lt: 10 } },
-    orderBy: { stock: 'asc' },
-  });
-
-  return res.json(report.map((product: any) => ({ ...product, created_at: product.createdAt })));
-});
-
-app.get('/api/health', async (_req, res) => {
-  await prisma.$queryRaw`SELECT 1`;
-  res.json({ ok: true });
+  console.error(error);
+  return res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

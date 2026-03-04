@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Product } from '../types';
+import { apiFetch } from '../lib/api';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -13,7 +14,7 @@ export default function Products() {
   });
 
   const fetchProducts = async () => {
-    const res = await fetch('/api/products');
+    const res = await apiFetch('/api/products');
     const data = await res.json();
     setProducts(data);
   };
@@ -25,7 +26,7 @@ export default function Products() {
     const method = editingProduct ? 'PUT' : 'POST';
     const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
     
-    const res = await fetch(url, {
+    const res = await apiFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
@@ -53,7 +54,7 @@ export default function Products() {
 
   const handleDelete = async (id: number) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/products/${id}`, { method: 'DELETE' });
       fetchProducts();
     }
   };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CheckCircle, XCircle } from 'lucide-react';
 import { Client, Product, User, SaleItem } from '../types';
+import { apiFetch } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Sales({ user }: { user: User }) {
@@ -16,7 +17,7 @@ export default function Sales({ user }: { user: User }) {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [cRes, pRes] = await Promise.all([fetch('/api/clients'), fetch('/api/products')]);
+      const [cRes, pRes] = await Promise.all([apiFetch('/api/clients'), apiFetch('/api/products')]);
       setClients(await cRes.json());
       setProducts(await pRes.json());
     };
@@ -76,7 +77,7 @@ export default function Sales({ user }: { user: User }) {
 
     setIsProcessing(true);
     try {
-      const res = await fetch('/api/sales', {
+      const res = await apiFetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -95,7 +96,7 @@ export default function Sales({ user }: { user: User }) {
         setSelectedClient(null);
         setDiscount(0);
         // Refresh products to update stock
-        const pRes = await fetch('/api/products');
+        const pRes = await apiFetch('/api/products');
         setProducts(await pRes.json());
       } else {
         const err = await res.json();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Download, Calendar, Filter, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Sale, Product } from '../types';
+import { apiFetch } from '../lib/api';
 
 export default function Reports() {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -13,9 +14,9 @@ export default function Reports() {
 
   const fetchReports = async () => {
     const [salesRes, topRes, lowRes] = await Promise.all([
-      fetch(`/api/reports/sales-period?start=${dateRange.start}&end=${dateRange.end}`),
-      fetch('/api/reports/top-products'),
-      fetch('/api/reports/low-stock')
+      apiFetch(`/api/reports/sales-period?start=${dateRange.start}&end=${dateRange.end}`),
+      apiFetch('/api/reports/top-products'),
+      apiFetch('/api/reports/low-stock')
     ]);
     
     setSales(await salesRes.json());

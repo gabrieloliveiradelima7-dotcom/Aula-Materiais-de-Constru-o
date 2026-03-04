@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Client } from '../types';
+import { apiFetch } from '../lib/api';
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -14,7 +15,7 @@ export default function Clients() {
   });
 
   const fetchClients = async () => {
-    const res = await fetch('/api/clients');
+    const res = await apiFetch('/api/clients');
     const data = await res.json();
     setClients(data);
   };
@@ -26,7 +27,7 @@ export default function Clients() {
     const method = editingClient ? 'PUT' : 'POST';
     const url = editingClient ? `/api/clients/${editingClient.id}` : '/api/clients';
     
-    const res = await fetch(url, {
+    const res = await apiFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
@@ -58,7 +59,7 @@ export default function Clients() {
 
   const handleDelete = async (id: number) => {
     if (confirm('Tem certeza que deseja excluir este cliente?')) {
-      await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      await apiFetch(`/api/clients/${id}`, { method: 'DELETE' });
       fetchClients();
     }
   };

@@ -8,6 +8,7 @@ import {
   ArrowDownRight
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { apiFetch } from '../lib/api';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -21,9 +22,9 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         const [salesRes, productsRes, clientsRes] = await Promise.all([
-          fetch('/api/sales'),
-          fetch('/api/products'),
-          fetch('/api/clients')
+          apiFetch('/api/sales'),
+          apiFetch('/api/products'),
+          apiFetch('/api/clients')
         ]);
         
         const sales = await salesRes.json();

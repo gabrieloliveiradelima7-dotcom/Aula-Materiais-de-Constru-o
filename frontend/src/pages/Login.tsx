@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LogIn, Lock, User as UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { User } from '../types';
+import { apiFetch } from '../lib/api';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -19,7 +20,7 @@ export default function Login({ onLogin }: LoginProps) {
     setError('');
 
     try {
-      const res = await fetch('/api/login', {
+      const res = await apiFetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

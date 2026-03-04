@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  password String
+  role     String @default("vendedor")
+
+  sales Sale[]
+
+  @@map("users")
+}
+
+model Client {
+  id           Int      @id @default(autoincrement())
+  name         String
+  document     String   @unique
+  phone        String?
+  email        String?
+  street       String?
+  number       String?
+  neighborhood String?
+  city         String?
+  state        String?
+  zip          String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  sales Sale[]
+
+  @@map("clients")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  category    String?
+  price       Float
+  stock       Int      @default(0)
+  unit        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  saleItems SaleItem[]
+
+  @@map("products")
+}
+
+model Sale {
+  id            Int      @id @default(autoincrement())
+  clientId      Int      @map("client_id")
+  userId        Int      @map("user_id")
+  total         Float
+  discount      Float    @default(0)
+  paymentMethod String?  @map("payment_method")
+  status        String   @default("concluída")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+  items  SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        Int   @id @default(autoincrement())
+  saleId    Int   @map("sale_id")
+  productId Int   @map("product_id")
+  quantity  Int
+  unitPrice Float @map("unit_price")
+  subtotal  Float
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}

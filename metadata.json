@@ -1,0 +1,5 @@
+{
+  "name": "ConstruManager - Gestão de Materiais de Construção",
+  "description": "Sistema completo para gerenciamento de lojas de materiais de construção, incluindo clientes, produtos, vendas e controle de estoque.",
+  "requestFramePermissions": []
+}

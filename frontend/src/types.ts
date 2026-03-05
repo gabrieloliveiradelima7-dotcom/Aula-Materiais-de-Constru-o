@@ -1,7 +1,16 @@
+export const USER_ROLES = ['admin', 'vendedor'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const SALE_STATUS = ['concluída', 'cancelada'] as const;
+export type SaleStatus = (typeof SALE_STATUS)[number];
+
+export const PAYMENT_METHODS = ['pix', 'dinheiro', 'cartao_credito', 'cartao_debito', 'boleto'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 export interface User {
   id: number;
   username: string;
-  role: 'admin' | 'vendedor';
+  role: UserRole;
 }
 
 export interface Client {
@@ -48,8 +57,8 @@ export interface Sale {
   user_id: number;
   total: number;
   discount: number;
-  payment_method: string;
-  status: 'concluída' | 'cancelada';
+  payment_method: PaymentMethod;
+  status: SaleStatus;
   created_at: string;
   items?: SaleItem[];
 }

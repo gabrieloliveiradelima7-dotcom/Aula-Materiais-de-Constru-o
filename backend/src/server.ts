@@ -12,6 +12,10 @@ const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || 3001);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 
+const USER_ROLES = ['admin', 'vendedor'] as const;
+const SALE_STATUS = ['concluída', 'cancelada'] as const;
+const PAYMENT_METHODS = ['pix', 'dinheiro', 'cartao_credito', 'cartao_debito', 'boleto'] as const;
+
 class HttpError extends Error {
   status: number;
 
@@ -74,7 +78,7 @@ const saleSchema = z.object({
   items: z.array(saleItemSchema).min(1),
   total: z.number().nonnegative(),
   discount: z.number().nonnegative(),
-  payment_method: z.string().min(2),
+  payment_method: z.enum(PAYMENT_METHODS),
 });
 
 app.use(cors({ origin: FRONTEND_ORIGIN }));
@@ -288,7 +292,7 @@ app.post(
 
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const sale = await tx.sale.findUnique({ where: { id: saleId } });
-      if (!sale || sale.status === 'cancelada') return;
+      if (!sale || sale.status === SALE_STATUS[1]) return;
 
       const items = await tx.saleItem.findMany({ where: { saleId } });
       for (const item of items) {

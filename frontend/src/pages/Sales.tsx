@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CheckCircle, XCircle } from 'lucide-react';
-import { Client, Product, User, SaleItem } from '../types';
+import { Client, Product, User, SaleItem, PAYMENT_METHODS, type PaymentMethod } from '../types';
 import { apiFetch } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -10,7 +10,7 @@ export default function Sales({ user }: { user: User }) {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [discount, setDiscount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('pix');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [clientSearch, setClientSearch] = useState('');
@@ -279,13 +279,17 @@ export default function Sales({ user }: { user: User }) {
             <select
               className="w-full px-4 py-2 bg-white border border-black/10 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
             >
-              <option value="pix">PIX</option>
-              <option value="dinheiro">Dinheiro</option>
-              <option value="cartao_credito">Cartão de Crédito</option>
-              <option value="cartao_debito">Cartão de Débito</option>
-              <option value="boleto">Boleto</option>
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method} value={method}>
+                  {method === 'pix' && 'PIX'}
+                  {method === 'dinheiro' && 'Dinheiro'}
+                  {method === 'cartao_credito' && 'Cartão de Crédito'}
+                  {method === 'cartao_debito' && 'Cartão de Débito'}
+                  {method === 'boleto' && 'Boleto'}
+                </option>
+              ))}
             </select>
           </div>
 

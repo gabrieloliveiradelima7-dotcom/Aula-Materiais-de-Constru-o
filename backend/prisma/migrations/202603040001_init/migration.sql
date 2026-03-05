@@ -1,8 +1,12 @@
+CREATE TYPE "UserRole" AS ENUM ('admin', 'vendedor');
+CREATE TYPE "SaleStatus" AS ENUM ('concluída', 'cancelada');
+CREATE TYPE "PaymentMethod" AS ENUM ('pix', 'dinheiro', 'cartao_credito', 'cartao_debito', 'boleto');
+
 CREATE TABLE "users" (
     "id" SERIAL NOT NULL,
     "username" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "role" TEXT NOT NULL DEFAULT 'vendedor',
+    "role" "UserRole" NOT NULL DEFAULT 'vendedor',
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -50,8 +54,8 @@ CREATE TABLE "sales" (
     "user_id" INTEGER NOT NULL,
     "total" DOUBLE PRECISION NOT NULL,
     "discount" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "payment_method" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'concluída',
+    "payment_method" "PaymentMethod" NOT NULL,
+    "status" "SaleStatus" NOT NULL DEFAULT 'concluída',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "sales_pkey" PRIMARY KEY ("id")

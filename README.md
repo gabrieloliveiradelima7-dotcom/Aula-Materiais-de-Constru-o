@@ -48,6 +48,7 @@ Status atual: **completa para primeira fase**.
 - Frontend consome API por helper (`apiFetch`) e suporta:
   - URL relativa (`/api`) para desenvolvimento com proxy;
   - URL absoluta via `VITE_API_URL` para deploy separado.
+- Enums foram alinhados com o frontend via código (roles, status de venda e métodos de pagamento).
 - Backend mantém contrato esperado pelo frontend nos endpoints:
   - `POST /api/login`
   - `GET|POST|PUT|DELETE /api/clients`

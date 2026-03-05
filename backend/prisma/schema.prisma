@@ -7,11 +7,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  admin
+  vendedor
+}
+
+enum SaleStatus {
+  concluída
+  cancelada
+}
+
+enum PaymentMethod {
+  pix
+  dinheiro
+  cartao_credito
+  cartao_debito
+  boleto
+}
+
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
+  id       Int      @id @default(autoincrement())
+  username String   @unique
   password String
-  role     String @default("vendedor")
+  role     UserRole @default(vendedor)
 
   sales Sale[]
 
@@ -54,14 +72,14 @@ model Product {
 }
 
 model Sale {
-  id            Int      @id @default(autoincrement())
-  clientId      Int      @map("client_id")
-  userId        Int      @map("user_id")
+  id            Int           @id @default(autoincrement())
+  clientId      Int           @map("client_id")
+  userId        Int           @map("user_id")
   total         Float
-  discount      Float    @default(0)
-  paymentMethod String?  @map("payment_method")
-  status        String   @default("concluída")
-  createdAt     DateTime @default(now()) @map("created_at")
+  discount      Float         @default(0)
+  paymentMethod PaymentMethod @map("payment_method")
+  status        SaleStatus    @default(concluída)
+  createdAt     DateTime      @default(now()) @map("created_at")
 
   client Client @relation(fields: [clientId], references: [id])
   user   User   @relation(fields: [userId], references: [id])

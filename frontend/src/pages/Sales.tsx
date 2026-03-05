@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CheckCircle, XCircle } from 'lucide-react';
-import { Client, Product, User, SaleItem, PAYMENT_METHODS, type PaymentMethod } from '../types';
+import { Client, Product, User, SaleItem, PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethod } from '../types';
 import { apiFetch } from '../lib/api';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -283,11 +283,7 @@ export default function Sales({ user }: { user: User }) {
             >
               {PAYMENT_METHODS.map((method) => (
                 <option key={method} value={method}>
-                  {method === 'pix' && 'PIX'}
-                  {method === 'dinheiro' && 'Dinheiro'}
-                  {method === 'cartao_credito' && 'Cartão de Crédito'}
-                  {method === 'cartao_debito' && 'Cartão de Débito'}
-                  {method === 'boleto' && 'Boleto'}
+                  {PAYMENT_METHOD_LABELS[method]}
                 </option>
               ))}
             </select>

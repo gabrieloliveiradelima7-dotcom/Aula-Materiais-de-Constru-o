@@ -1,11 +1,15 @@
-export const USER_ROLES = ['admin', 'vendedor'] as const;
-export type UserRole = (typeof USER_ROLES)[number];
+import {
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
+  SALE_STATUS,
+  USER_ROLES,
+  type PaymentMethod,
+  type SaleStatus,
+  type UserRole,
+} from '../../shared/enums';
 
-export const SALE_STATUS = ['concluída', 'cancelada'] as const;
-export type SaleStatus = (typeof SALE_STATUS)[number];
-
-export const PAYMENT_METHODS = ['pix', 'dinheiro', 'cartao_credito', 'cartao_debito', 'boleto'] as const;
-export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export { PAYMENT_METHOD_LABELS, PAYMENT_METHODS, SALE_STATUS, USER_ROLES };
+export type { PaymentMethod, SaleStatus, UserRole };
 
 export interface User {
   id: number;

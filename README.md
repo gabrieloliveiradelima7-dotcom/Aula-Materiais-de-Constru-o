@@ -77,3 +77,20 @@ Status atual: **completa para primeira fase**.
 ### `frontend/.env`
 
 - `VITE_API_URL` (opcional)
+
+
+## Plano executado para resolver os problemas
+
+1. **Eliminar divergência de contrato**: centralização de enums em `shared/enums.ts`.
+2. **Aplicar integração por código**: frontend e backend passam a importar os mesmos enums.
+3. **Blindar API**: validação de `payment_method` diretamente pelo enum compartilhado.
+4. **Garantir regressão zero**: testes automatizados de validação de API (`backend/tests`).
+
+### Checks recomendados
+
+```bash
+npm run test --workspace backend
+npm run build --workspace backend
+npm run lint --workspace frontend
+npm run build --workspace frontend
+```

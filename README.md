@@ -16,36 +16,36 @@ Projeto organizado em duas aplicações:
 
 ## Rodar em DEV (fluxo recomendado)
 
-### 1) Instalar dependências
+### 1) Instalar dependências (root + workspaces)
 
 ```bash
-npm install
+npm install --workspaces --include-workspace-root
 ```
 
-### 2) Configurar ambiente backend
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-### 3) Subir tudo em modo desenvolvimento
+### 2) Subir tudo em modo desenvolvimento
 
 ```bash
 npm run dev:full
 ```
 
-Esse comando:
+> O script `dev:full` detecta Docker automaticamente.
+> - Se houver Docker, ele sobe o Postgres local.
+> - Se não houver Docker, ele segue sem banco local e usa `DATABASE_URL` do `backend/.env`.
 
-1. Sobe o PostgreSQL via Docker (`dev:db`);
-2. Gera client Prisma + aplica migração + seed (`dev:setup`);
-3. Inicia backend e frontend juntos (`dev`).
+Se quiser forçar o modo sem Docker:
+
+```bash
+npm run dev:full:nodb
+```
 
 ## Scripts úteis de DEV
 
 - `npm run dev` → sobe frontend + backend simultaneamente.
-- `npm run dev:db` → sobe somente o banco.
-- `npm run dev:db:down` → derruba o banco.
-- `npm run dev:setup` → prepara backend (db + prisma + seed).
+- `npm run dev:db` → sobe somente o banco Docker.
+- `npm run dev:db:down` → derruba o banco Docker.
+- `npm run dev:setup:backend` → garante `backend/.env` + roda `prisma generate + migrate + seed`.
+- `npm run dev:full` → banco + setup backend + frontend/backend.
+- `npm run dev:full:nodb` → setup backend + frontend/backend (sem Docker).
 - `npm run dev:frontend` → sobe só o frontend.
 - `npm run dev:backend` → sobe só o backend.
 

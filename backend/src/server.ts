@@ -404,10 +404,20 @@ export function createApp(prisma?: PrismaClient | any) {
 }
 
 export function startServer() {
-  const app = createApp();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Backend rodando em http://localhost:${PORT}`);
-  });
+  try {
+    const app = createApp();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Backend rodando em http://localhost:${PORT}`);
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('@prisma/client did not initialize yet')) {
+      console.error('Prisma Client não gerado. Execute: npm run prisma:generate --workspace backend');
+    } else {
+      console.error('Falha ao iniciar backend:', message);
+    }
+    process.exit(1);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -11,6 +11,14 @@
     "dev:backend": "npm run dev --workspace backend",
     "lint:frontend": "npm run lint --workspace frontend",
     "build:frontend": "npm run build --workspace frontend",
-    "build:backend": "npm run build --workspace backend"
+    "build:backend": "npm run build --workspace backend",
+    "dev": "concurrently -k -n BACKEND,FRONTEND -c cyan,magenta \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "dev:db": "docker compose -f backend/docker-compose.yml up -d",
+    "dev:db:down": "docker compose -f backend/docker-compose.yml down",
+    "dev:setup": "npm run dev:db && npm run prisma:generate --workspace backend && npm run prisma:migrate --workspace backend && npm run prisma:seed --workspace backend",
+    "dev:full": "npm run dev:setup && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
   }
 }

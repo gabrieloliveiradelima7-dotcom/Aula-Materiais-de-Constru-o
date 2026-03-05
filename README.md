@@ -10,35 +10,49 @@ Projeto organizado em duas aplicações:
 ```txt
 .
 ├── frontend/
-└── backend/
+├── backend/
+└── shared/
 ```
 
-## Subir ambiente completo (primeira integração)
+## Rodar em DEV (fluxo recomendado)
 
-### 1) Backend + banco
+### 1) Instalar dependências
 
 ```bash
-cd backend
-cp .env.example .env
-docker compose up -d
 npm install
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
-npm run dev
 ```
 
-API padrão: `http://localhost:3001`
-
-### 2) Frontend
+### 2) Configurar ambiente backend
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cp backend/.env.example backend/.env
 ```
 
-Frontend padrão: `http://localhost:5173`
+### 3) Subir tudo em modo desenvolvimento
+
+```bash
+npm run dev:full
+```
+
+Esse comando:
+
+1. Sobe o PostgreSQL via Docker (`dev:db`);
+2. Gera client Prisma + aplica migração + seed (`dev:setup`);
+3. Inicia backend e frontend juntos (`dev`).
+
+## Scripts úteis de DEV
+
+- `npm run dev` → sobe frontend + backend simultaneamente.
+- `npm run dev:db` → sobe somente o banco.
+- `npm run dev:db:down` → derruba o banco.
+- `npm run dev:setup` → prepara backend (db + prisma + seed).
+- `npm run dev:frontend` → sobe só o frontend.
+- `npm run dev:backend` → sobe só o backend.
+
+## Endereços padrão
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3001`
 
 ## Integração Frontend x Backend
 
@@ -48,7 +62,7 @@ Status atual: **completa para primeira fase**.
 - Frontend consome API por helper (`apiFetch`) e suporta:
   - URL relativa (`/api`) para desenvolvimento com proxy;
   - URL absoluta via `VITE_API_URL` para deploy separado.
-- Enums foram alinhados com o frontend via código (roles, status de venda e métodos de pagamento).
+- Enums estão centralizados em `shared/enums.ts` e usados por frontend e backend.
 - Backend mantém contrato esperado pelo frontend nos endpoints:
   - `POST /api/login`
   - `GET|POST|PUT|DELETE /api/clients`
@@ -58,35 +72,7 @@ Status atual: **completa para primeira fase**.
   - `GET /api/reports/top-products`
   - `GET /api/reports/low-stock`
 
-## Backend hardening (feito)
-
-- Validação de payload com **Zod**.
-- Tratamento centralizado de erros (422, 404, 409, 500).
-- Login com senha em hash (**bcrypt**) em vez de senha em texto puro.
-- Seed atualiza/cria usuário admin com hash seguro.
-- Transações de venda com validação de estoque.
-
-## Variáveis de ambiente
-
-### `backend/.env`
-
-- `DATABASE_URL`
-- `PORT`
-- `FRONTEND_ORIGIN`
-
-### `frontend/.env`
-
-- `VITE_API_URL` (opcional)
-
-
-## Plano executado para resolver os problemas
-
-1. **Eliminar divergência de contrato**: centralização de enums em `shared/enums.ts`.
-2. **Aplicar integração por código**: frontend e backend passam a importar os mesmos enums.
-3. **Blindar API**: validação de `payment_method` diretamente pelo enum compartilhado.
-4. **Garantir regressão zero**: testes automatizados de validação de API (`backend/tests`).
-
-### Checks recomendados
+## Checks recomendados
 
 ```bash
 npm run test --workspace backend
